@@ -1,0 +1,116 @@
+# Импортируем необходимые библиотеки
+import os
+import telebot
+import random
+from os import environ
+
+# Получаем токен бота из переменной окружения
+BOT_TOKEN = os.environ.get('6135459155:AAEZVPkeFsQTtpjtBR8K-SNdeh2ekv0KF2o')
+
+# Создаем экземпляр бота
+bot = telebot.TeleBot('6135459155:AAEZVPkeFsQTtpjtBR8K-SNdeh2ekv0KF2o')
+
+# Список админов бота
+admins = ['DEDINSIDE0011', '@sasibacka']
+
+# Словарь для хранения розыгрышей
+# Ключ - идентификатор чата, значение - список участников
+raffles = {}
+
+# Обработчик команды /start
+@bot.message_handler(commands=['start'])
+def start(message):
+    # Проверяем, есть ли параметр в команде /start
+    if len(message.text.split()) > 1:
+        # Получаем параметр из команды /start
+        param = message.text.split()[1]
+        # Проверяем, есть ли розыгрыш с таким параметром
+        if param in raffles:
+            # Проверяем, не участвует ли пользователь уже в розыгрыше
+            if message.from_user.id not in raffles[param]:
+                # Добавляем пользователя в список участников розыгрыша
+                raffles[param].append(message.from_user.id)
+                # Отправляем сообщение об успешном участии в розыгрыше
+                bot.send_message(message.chat.id, f'Ты успешно участвуешь в розыгрыше {param}! Жди объявления победителя.')
+            else:
+                # Отправляем сообщение о том, что пользователь уже участвует в розыгрыше
+                bot.send_message(message.chat.id, f'Ты уже участвуешь в розыгрыше {param}. Не нужно нажимать старт еще раз.')
+        else:
+            # Отправляем сообщение о том, что такого розыгрыша нет
+            bot.send_message(message.chat.id, f'Извини, но такого розыгрыша нет. Проверь правильность ссылки.')
+    else:
+        # Проверяем, является ли отправитель админом бота
+        if message.from_user.username in admins:
+            # Отправляем приветственное сообщение и инструкцию по созданию розыгрыша
+            bot.send_message(message.chat.id, f'Привет, {message.from_user.first_name}! Я бот для создания розыгрышей в Telegram. Чтобы создать розыгрыш, отправь мне команду /create в любом чате, где я есть. Чтобы завершить розыгрыш и выбрать победителя, отправь мне команду /finish в том же чате.')
+        else:
+            # Отправляем приветственное сообщение и инструкцию по участию в розыгрыше
+            bot.send_message(message.chat.id, f'Привет, {message.from_user.first_name}! Я бот для создания розыгрышей в Telegram. Чтобы участвовать в розыгрыше, перейди по ссылке в бота и нажми старт.')
+
+# Обработчик команды /myid
+@bot.message_handler(commands=['myid'])
+def send_myid(message):
+    # Получаем идентификатор пользователя из сообщения
+    user_id = message.from_user.id
+    # Отправляем пользователю его идентификатор
+    bot.send_message(message.chat.id, f'Ваш идентификатор: {user_id}')
+
+# Обработчик команды /create
+@bot.message_handler(commands=['create'])
+def create(message):
+    # Проверяем, является ли отправитель админом бота
+    if message.from_user.username in admins:
+        # Проверяем, есть ли параметр в команде /create
+        if len(message.text.split()) > 1:
+            # Получаем параметр из команды /create
+            param = message.text.split()[1]
+            # Проверяем, есть ли уже розыгрыш с таким параметром
+            if param in raffles:
+                # Отправляем сообщение об ошибке
+                bot.send_message(message.chat.id, f'В этом чате уже есть розыгрыш с таким параметром. Попробуй выбрать другой.')
+            else:
+                # Создаем новый розыгрыш с таким параметром в этом чате
+                raffles[param] = []
+                # Отправляем сообщение об успешном создании розыгрыша и приглашаем участников
+                bot.send_message(message.chat.id, f'Розыгрыш {param} успешно создан! Чтобы участвовать в нем, перейди по ссылке https://t.me/rgameanybot?start={param} и нажми старт.')
+        else:
+            # Отправляем сообщение о том, что нужно указать параметр для розыгрыша
+            bot.send_message(message.chat.id, 'Чтобы создать розыгрыш, тебе нужно указать параметр для него. Например, /create test.')
+    else:
+        # Отправляем сообщение о том, что только админы бота могут создавать розыгрыши
+        bot.send_message(message.chat.id, 'Извини, но только админы бота могут создавать розыгрыши.')
+
+# Обработчик команды /finish
+@bot.message_handler(commands=['finish'])
+def finish(message):
+    # Проверяем, является ли отправитель админом бота
+    if message.from_user.username in admins:
+        # Проверяем, есть ли параметр в команде /finish
+        if len(message.text.split()) > 1:
+            # Получаем параметр из команды /finish
+            param = message.text.split()[1]
+            # Проверяем, есть ли розыгрыш с таким параметром
+            if param in raffles:
+                # Проверяем, есть ли участники в розыгрыше
+                if raffles[param]:
+                    # Выбираем случайного победителя из списка участников
+                    winner = random.choice(raffles[param])
+                    # Отправляем сообщение о завершении розыгрыша и объявлении победителя
+                    bot.send_message(message.chat.id, f'Розыгрыш {param} завершен! Победителем стал пользователь с идентификатором {winner}. Поздравляем!')
+                    # Удаляем розыгрыш из словаря
+                    del raffles[param]
+                else:
+                    # Отправляем сообщение о том, что в розыгрыше не было участников
+                    bot.send_message(message.chat.id, f'В розыгрыше {param} не было участников. Жаль.')
+            else:
+                # Отправляем сообщение о том, что такого розыгрыша нет
+                bot.send_message(message.chat.id, f'Извини, но такого розыгрыша нет. Проверь правильность параметра.')
+        else:
+            # Отправляем сообщение о том, что нужно указать параметр для розыгрыша
+            bot.send_message(message.chat.id, 'Чтобы завершить розыгрыш, тебе нужно указать параметр для него. Например, /finish test.')
+    else:
+        # Отправляем сообщение о том, что только админы бота могут завершать розыгрыши
+        bot.send_message(message.chat.id, 'Извини, но только админы бота могут завершать розыгрыши.')
+
+# Запускаем бота
+bot.polling()
